@@ -3,7 +3,7 @@ import clearml
 
 import torch
 import transformers
-from transformers import HfArgumentParser, Trainer
+from transformers import HfArgumentParser, Trainer, EarlyStoppingCallback
 
 from helpers import MIN_JP_CODEPOINT, MAX_JP_CODEPOINT, DataArguments, prepare_data, \
     ShibaTrainingArguments, get_model_hyperparams, prepare_clearml_data
@@ -85,12 +85,17 @@ def main():
             checkpoint_dir = training_args.resume_from_checkpoint
     os.environ['WANDB_PROJECT'] = 'shiba'
 
+    # syntax for EarlyStoppingCallback is shown in 
+    # https://towardsdatascience.com/fine-tuning-pretrained-nlp-models-with-huggingfaces-trainer-6326a4456e7b
     print(training_args)
     trainer = Trainer(model=model,
                       args=training_args,
                       data_collator=data_collator,
                       train_dataset=training_data,
                       eval_dataset=dev_data,
+                      callbacks=[
+                          EarlyStoppingCallback(early_stopping_patience=5),
+                      ]
                       )
 
     trainer.train(resume_from_checkpoint=checkpoint_dir)
