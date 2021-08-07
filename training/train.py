@@ -4,17 +4,49 @@ import torch
 import transformers
 from transformers import HfArgumentParser, Trainer
 
-from helpers import MAX_JP_CODEPOINT, DataArguments, prepare_data, \
+from helpers import MIN_JP_CODEPOINT, MAX_JP_CODEPOINT, DataArguments, prepare_data, \
     ShibaTrainingArguments, get_model_hyperparams
 from masking import RandomSpanMaskingDataCollator, RandomMaskingDataCollator
 from shiba import ShibaForAutoregressiveLanguageModeling, CodepointTokenizer
 
+# cdleong: added these
+from clearml import Task
+
+
+def setup_clearml_data(data_args, training_args):
+
+    # download the clearML dataset
+    print("STUB: should download clearml here")
+
+    # put it where it is expected to be!
+    print(f"STUB: should put clearml data in {data_args.data}")
+    pass
+
 
 def main():
+    
+    
     transformers.logging.set_verbosity_info()
     parser = HfArgumentParser((DataArguments, ShibaTrainingArguments))
 
     data_args, training_args = parser.parse_args_into_dataclasses()
+
+    # CLEARML TASK SETUP
+    task = Task.init(
+        project_name=training_args.clearml_project_name,
+        output_uri=training_args.clearml_output_uri,
+        task_name=training_args.clearml_task_name,
+    )
+
+    if training_args.clearml_queue_name:
+        task.execute_remotely(queue_name=training_args.clearml_queue_name)
+
+
+
+
+
+
+
     tokenizer = CodepointTokenizer()
     if training_args.masking_type == 'bpe_span':
         print('BPE based-span masking')
@@ -26,12 +58,20 @@ def main():
         print('Random character masking')
         # char range: https://stackoverflow.com/a/30200250/4243650
         # we aren't including half width stuff
+        
         data_collator = RandomMaskingDataCollator(tokenizer, range(3000, MAX_JP_CODEPOINT))
     else:
         raise RuntimeError('Unknown masking type')
 
+
+    
+
     training_args.logging_dir = training_args.output_dir
+
+    # TODO: replace this with custom clearml loading code
     training_data, dev_data = prepare_data(data_args)
+
+
     model_hyperparams = get_model_hyperparams(training_args)
 
     model = ShibaForAutoregressiveLanguageModeling(MAX_JP_CODEPOINT, **model_hyperparams)

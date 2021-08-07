@@ -9,6 +9,9 @@ from transformers import TrainingArguments
 
 from shiba import Shiba, CodepointTokenizer
 
+
+# https://stackoverflow.com/questions/19899554/unicode-range-for-japanese/30200250#30200250
+MIN_JP_CODEPOINT=3000
 MAX_JP_CODEPOINT = 0x9faf
 EVAL_DATA_PERCENT = 0.02
 
@@ -32,7 +35,7 @@ class ShibaTrainingArguments(TrainingArguments):
     report_to: Optional[List[str]] = field(default_factory=lambda: ['wandb'])
     evaluation_strategy: Optional[str] = field(default='steps')
     fp16: Optional[bool] = field(default=torch.cuda.is_available())
-    deepspeed: Optional = field(default=None)
+    deepspeed: Optional[bool] = field(default=None)
     warmup_ratio: Optional[float] = 0.025  # from canine
 
     per_device_eval_batch_size: Optional[int] = field(default=12)
@@ -49,6 +52,17 @@ class ShibaTrainingArguments(TrainingArguments):
     )
     local_attention_window: Optional[int] = field(default=128)
 
+    # cdleong: added these
+    #############################
+    # CLEARML ARGS
+    #############################
+
+    clearml_project_name: Optional[str] = field(default="")
+    clearml_task_name: Optional[str] = field(default="")
+    clearml_output_uri: Optional[str] = field(default="")
+    clearml_queue_name: Optional[str] = field(default="")
+    clearml_input_task_id: Optional[str] = field(default="")
+
 
 @dataclass
 class ShibaWordSegArgs(ShibaTrainingArguments):
@@ -56,7 +70,7 @@ class ShibaWordSegArgs(ShibaTrainingArguments):
 
     # only used for hyperparameter search
     trials: Optional[int] = field(default=2)
-    deepspeed: Optional = field(default=None)
+    deepspeed: Optional[bool] = field(default=None)
     gradient_accumulation_steps: Optional[int] = field(default=1)
     report_to: Optional[List[str]] = field(default=lambda: ['tensorboard', 'wandb'])
     num_train_epochs: Optional[int] = 6
@@ -77,7 +91,7 @@ class ShibaClassificationArgs(ShibaTrainingArguments):
 
     # only used for hyperparameter search
     trials: Optional[int] = field(default=2)
-    deepspeed: Optional = field(default=None)
+    deepspeed: Optional[bool] = field(default=None)
     gradient_accumulation_steps: Optional[int] = field(default=1)
     report_to: Optional[List[str]] = field(default=lambda: ['tensorboard', 'wandb'])
 
@@ -104,8 +118,7 @@ def prepare_data(args: DataArguments) -> Tuple[Dataset, Dataset]:
     data_dict = all_data.train_test_split(train_size=0.98, seed=42)
     training_data = data_dict['train']
     dev_data = data_dict['test']
-    return training_data, dev_data
-
+    return training_data, dev_data    
 
 class SequenceLabelingDataCollator:
     def __init__(self):
