@@ -1,5 +1,6 @@
 import inspect
 from dataclasses import dataclass, field
+from os import name
 from typing import Optional, Dict, Tuple, List
 
 import torch.nn
@@ -9,6 +10,8 @@ from transformers import TrainingArguments
 
 from shiba import Shiba, CodepointTokenizer
 
+
+from clearml import Dataset as ClearDataset
 
 # https://stackoverflow.com/questions/19899554/unicode-range-for-japanese/30200250#30200250
 MIN_JP_CODEPOINT=3000
@@ -20,7 +23,19 @@ class DataArguments:
     data: str = field(
         default=None, metadata={"help": "The location of the Japanese wiki data to use for training."}
     )
+    clearml_training_set: Optional[str] = field(
+        default=None,
+        metadata={
+            "help": "The set from which to pull train.txt. Give the name, please, not the ID"
+        },
+    )
 
+    clearml_validation_set: Optional[str] = field(
+        default=None,
+        metadata={
+            "help": "The set from which to pull validation.txt. Give the name, please, not the ID"
+        },
+    )
 
 @dataclass
 class ShibaTrainingArguments(TrainingArguments):
@@ -61,7 +76,18 @@ class ShibaTrainingArguments(TrainingArguments):
     clearml_task_name: Optional[str] = field(default="")
     clearml_output_uri: Optional[str] = field(default="")
     clearml_queue_name: Optional[str] = field(default="")
-    clearml_input_task_id: Optional[str] = field(default="")
+
+
+    clearml_task_name: Optional[str] = field(
+        default=None, metadata={"help": "task name for clearML task."}
+    )
+
+    clearml_queue: Optional[str] = field(
+        default=None,
+        metadata={
+            "help": "if set, will try to execute remotely on the specified queue. aqua-large-gpu0, idx_gandalf_titan-rtx, idx_gandalf_cpu, idx_gandalf_2080ti"
+        },
+    )
 
 
 @dataclass
@@ -112,6 +138,22 @@ def get_base_shiba_state_dict(state_dict: Dict) -> Dict:
     else:
         return state_dict
 
+
+
+def prepare_clearml_data(data_args, training_args):
+
+    #FIXME
+    # download the clearML dataset
+    training_set_path = ClearDataset.get(dataset_name=data_args.clearml_training_set).get_local_copy()
+    validation_set_path = ClearDataset.get(dataset_name=data_args.clearml_validation_set).get_local_copy()
+
+    training_file = training_set_path + "/train.jsonl"
+    validation_file = validation_set_path + "/validation.jsonl"
+    
+
+    training_data = load_dataset('json', data_files=training_file)['train']
+    dev_data=load_dataset('json', data_files=validation_file)['train']
+    return training_data, dev_data
 
 def prepare_data(args: DataArguments) -> Tuple[Dataset, Dataset]:
     all_data = load_dataset('json', data_files=args.data)['train']

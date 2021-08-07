@@ -19,3 +19,4 @@ ipadic
 
 # cdleong
 clearml
+boto3

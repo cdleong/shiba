@@ -1,26 +1,20 @@
 import os
+import clearml
 
 import torch
 import transformers
 from transformers import HfArgumentParser, Trainer
 
 from helpers import MIN_JP_CODEPOINT, MAX_JP_CODEPOINT, DataArguments, prepare_data, \
-    ShibaTrainingArguments, get_model_hyperparams
+    ShibaTrainingArguments, get_model_hyperparams, prepare_clearml_data
 from masking import RandomSpanMaskingDataCollator, RandomMaskingDataCollator
 from shiba import ShibaForAutoregressiveLanguageModeling, CodepointTokenizer
 
 # cdleong: added these
-from clearml import Task
+from clearml import Task 
 
 
-def setup_clearml_data(data_args, training_args):
 
-    # download the clearML dataset
-    print("STUB: should download clearml here")
-
-    # put it where it is expected to be!
-    print(f"STUB: should put clearml data in {data_args.data}")
-    pass
 
 
 def main():
@@ -32,6 +26,9 @@ def main():
     data_args, training_args = parser.parse_args_into_dataclasses()
 
     # CLEARML TASK SETUP
+    Task.add_requirements(
+        "tensorboardX", ""
+    )
     task = Task.init(
         project_name=training_args.clearml_project_name,
         output_uri=training_args.clearml_output_uri,
@@ -68,9 +65,13 @@ def main():
 
     training_args.logging_dir = training_args.output_dir
 
-    # TODO: replace this with custom clearml loading code
-    training_data, dev_data = prepare_data(data_args)
-
+    # CLEARML data loading 
+    if data_args.clearml_training_set and data_args.clearml_validation_set:
+        training_data, dev_data = prepare_clearml_data(data_args, training_args)
+        print(f"using training_data: {training_data}")
+        print(f"using dev_data: {dev_data}")
+    else:
+        training_data, dev_data = prepare_data(data_args)
 
     model_hyperparams = get_model_hyperparams(training_args)
 
@@ -93,6 +94,7 @@ def main():
                       )
 
     trainer.train(resume_from_checkpoint=checkpoint_dir)
+    
 
 
 if __name__ == '__main__':
