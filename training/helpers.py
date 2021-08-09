@@ -142,17 +142,20 @@ def get_base_shiba_state_dict(state_dict: Dict) -> Dict:
 
 def prepare_clearml_data(data_args, training_args):
 
-    #FIXME
+    
     # download the clearML dataset
     training_set_path = ClearDataset.get(dataset_name=data_args.clearml_training_set).get_local_copy()
     validation_set_path = ClearDataset.get(dataset_name=data_args.clearml_validation_set).get_local_copy()
 
-    training_file = training_set_path + "/train.jsonl"
-    validation_file = validation_set_path + "/validation.jsonl"
-    
+    training_file = training_set_path + "/train.jsonl"    
 
     training_data = load_dataset('json', data_files=training_file)['train']
-    dev_data=load_dataset('json', data_files=validation_file)['train']
+    try: 
+        validation_file = validation_set_path + "/validation.jsonl"
+        dev_data=load_dataset('json', data_files=validation_file)['train']
+    except FileNotFoundError:
+        dev_file = validation_set_path + "/dev.jsonl"
+        dev_data=load_dataset('json', data_files=dev_file)['train']
     return training_data, dev_data
 
 def prepare_data(args: DataArguments) -> Tuple[Dataset, Dataset]:
