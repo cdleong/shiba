@@ -1,3 +1,4 @@
+from operator import mod
 import os
 import clearml
 
@@ -12,7 +13,7 @@ from shiba import ShibaForAutoregressiveLanguageModeling, CodepointTokenizer
 
 # cdleong: added these
 from clearml import Task 
-
+from pathlib import Path
 
 
 
@@ -94,11 +95,30 @@ def main():
                       train_dataset=training_data,
                       eval_dataset=dev_data,
                       callbacks=[
-                          EarlyStoppingCallback(early_stopping_patience=5),
+                          EarlyStoppingCallback(early_stopping_patience=10),
                       ]
                       )
 
     trainer.train(resume_from_checkpoint=checkpoint_dir)
+    
+    
+
+
+    print("OK, let's manually upload everything in the output_dir to ClearML")
+    
+    output_files = list(Path(training_args.output_dir).rglob("*.*"))
+    print(output_files)
+    
+    for output_file in output_files:
+        print(output_file)
+        output_file_name = str(output_file.parent.name)+"_"+str(output_file.name)
+        # print(type(output_file))
+        Task.current_task().upload_artifact(
+            output_file_name, 
+            artifact_object=output_file
+        )
+
+    # Task.current_task().upload_artifact("shiba_outputs_folder.zip", artifact_object=training_args.output_dir)
     
 
 
