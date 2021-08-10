@@ -13,6 +13,18 @@ Files edited:
 
 Files added: 
 * training/finetune_ner.py
+* training/finetune_word_segmentation_on_masakhaner.py
+* masakhaner_fork_loading_script.py
+
+
+Running word segmentation on masakhaner using pretrained pytorch_model trained on hf_swahili_no_spaces
+
+```
+python finetune_word_segmentation_on_masakhaner.py --output_dir ~/runs/wordseg \
+  --resume_from_checkpoint ./hf_swahili_no_spaces_5k_steps/pytorch_model.bin \
+  --num_train_epochs 6 \
+  --save_strategy no
+```
 
 
 # Licensing notice from original repo
