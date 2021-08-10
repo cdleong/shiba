@@ -12,6 +12,10 @@ from helpers import get_model_hyperparams, SequenceLabelingDataCollator, \
     ShibaNERArgs, get_base_shiba_state_dict
 import torchmetrics
 
+#cdleong added these imports
+from pathlib import Path
+from clearml import Task, Dataset
+
 #TODO: adapt this to NER! 
 # * [] vocab size
 # * [] process_examples needs fixing
@@ -20,7 +24,26 @@ import torchmetrics
 # * [] clearml integration: download pretrained model
 
 
+def load_and_fix_state_dict(path_to_pytorch_model:Path):
+    '''
+    Given the path
+    '''
+    # we're expecting either a pytorch_model.bin or a whatever.pt
+    state_dict = torch.load(path_to_pytorch_model)
 
+    # all the items in the state dict either have "shiba_model." prefixed on them, 
+    # or can be safely discarded. See also get_base_shiba_state_dict in helpers.py
+    # So, we pull off the prefixes, e.g. shiba_model.whatever just becomes whatever
+    # https://discuss.pytorch.org/t/prefix-parameter-names-in-saved-model-if-trained-by-multi-gpu/494/4 
+    # describes a method for pulling the prefixes off
+    state_dict_with_fixed_keys = {k.partition("shiba_model.")[2]:state_dict[k] for k in state_dict.keys()}
+
+    # that ends up deleting keys like "autregressive_encoder.norm2.bias" that don't start with "shiba_model."", 
+    # reducing them to ""
+    # fortunately, we don't _want_ those anyway
+    _ = state_dict_with_fixed_keys.pop("", None)
+
+    return state_dict_with_fixed_keys
 
 def main():
     transformers.logging.set_verbosity_info()
@@ -34,8 +57,8 @@ def main():
         tokenizer = CodepointTokenizer()
 
         def process_example(example: Dict) -> Dict:
-            tokens = example['tokens']
-            text = ''.join(tokens)
+            tokens = example['tokens']  # cdleong: should be a list of characters
+            text = ''.join(tokens)  # cdleong: combines the list of characters to one big string. 
             labels = [0]  # CLS token
             for token in tokens:
                 new_label_count = len(token)
