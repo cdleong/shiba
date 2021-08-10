@@ -18,6 +18,9 @@ MIN_JP_CODEPOINT=3000
 MAX_JP_CODEPOINT = 0x9faf
 EVAL_DATA_PERCENT = 0.02
 
+#cdleong
+from pathlib import Path
+
 @dataclass
 class DataArguments:
     data: str = field(
@@ -104,6 +107,9 @@ class ShibaWordSegArgs(ShibaTrainingArguments):
 
     pretrained_bert: Optional[str] = field(default=None)
 
+        #cdleong
+    maskhane_ner_dataset: Optional[str] = field(default="swa")
+
 
 @dataclass
 class ShibaNERArgs(ShibaTrainingArguments):
@@ -121,6 +127,9 @@ class ShibaNERArgs(ShibaTrainingArguments):
     save_strategy: Optional[str] = 'no'
 
     pretrained_bert: Optional[str] = field(default=None)
+
+    #cdleong
+    maskhane_ner_dataset: Optional[str] = field(default="swa_no_word_boundaries")
 
 @dataclass
 class ShibaClassificationArgs(ShibaTrainingArguments):
@@ -174,6 +183,27 @@ def prepare_clearml_data(data_args, training_args):
         dev_file = validation_set_path + "/dev.jsonl"
         dev_data=load_dataset('json', data_files=dev_file)['train']
     return training_data, dev_data
+
+def load_and_fix_state_dict(path_to_pytorch_model:Path):
+    '''
+    Given the path
+    '''
+    # we're expecting either a pytorch_model.bin or a whatever.pt
+    state_dict = torch.load(path_to_pytorch_model)
+
+    # all the items in the state dict either have "shiba_model." prefixed on them, 
+    # or can be safely discarded. See also get_base_shiba_state_dict in helpers.py
+    # So, we pull off the prefixes, e.g. shiba_model.whatever just becomes whatever
+    # https://discuss.pytorch.org/t/prefix-parameter-names-in-saved-model-if-trained-by-multi-gpu/494/4 
+    # describes a method for pulling the prefixes off
+    state_dict_with_fixed_keys = {k.partition("shiba_model.")[2]:state_dict[k] for k in state_dict.keys()}
+
+    # that ends up deleting keys like "autregressive_encoder.norm2.bias" that don't start with "shiba_model."", 
+    # reducing them to ""
+    # fortunately, we don't _want_ those anyway
+    _ = state_dict_with_fixed_keys.pop("", None)
+
+    return state_dict_with_fixed_keys    
 
 def prepare_data(args: DataArguments) -> Tuple[Dataset, Dataset]:
     all_data = load_dataset('json', data_files=args.data)['train']

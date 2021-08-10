@@ -9,7 +9,7 @@ from transformers import HfArgumentParser, Trainer, EvalPrediction, BertForToken
 
 from shiba import CodepointTokenizer, ShibaForSequenceLabeling
 from helpers import get_model_hyperparams, SequenceLabelingDataCollator, \
-    ShibaNERArgs, get_base_shiba_state_dict
+    ShibaNERArgs, get_base_shiba_state_dict, load_and_fix_state_dict
 import torchmetrics
 
 #cdleong added these imports
@@ -24,26 +24,7 @@ from clearml import Task, Dataset
 # * [] clearml integration: download pretrained model from clearML
 
 
-def load_and_fix_state_dict(path_to_pytorch_model:Path):
-    '''
-    Given the path
-    '''
-    # we're expecting either a pytorch_model.bin or a whatever.pt
-    state_dict = torch.load(path_to_pytorch_model)
 
-    # all the items in the state dict either have "shiba_model." prefixed on them, 
-    # or can be safely discarded. See also get_base_shiba_state_dict in helpers.py
-    # So, we pull off the prefixes, e.g. shiba_model.whatever just becomes whatever
-    # https://discuss.pytorch.org/t/prefix-parameter-names-in-saved-model-if-trained-by-multi-gpu/494/4 
-    # describes a method for pulling the prefixes off
-    state_dict_with_fixed_keys = {k.partition("shiba_model.")[2]:state_dict[k] for k in state_dict.keys()}
-
-    # that ends up deleting keys like "autregressive_encoder.norm2.bias" that don't start with "shiba_model."", 
-    # reducing them to ""
-    # fortunately, we don't _want_ those anyway
-    _ = state_dict_with_fixed_keys.pop("", None)
-
-    return state_dict_with_fixed_keys
 
 
 
@@ -149,9 +130,15 @@ def main():
 
             return encoded_example
 
-    # TODO: edit this to load our forked masakhaNER data
-    ner_dataset = load_dataset('universal_dependencies', 'ja_gsd')
-    ner_dataset = ner_dataset.map(process_example, remove_columns=list(ner_dataset['train'][0].keys()))
+    #cdleong: old code
+    # dep  = load_dataset('universal_dependencies', 'ja_gsd')
+    # dep = dep.map(process_example, remove_columns=list(ner_dataset['train'][0].keys()))
+
+    # cdleong: new code, using the masakhaNER loading script we've created. 
+    masakhaner_dataset = load_dataset("./masakhaner_fork_loading_script.py", 
+    training_args.maskhane_ner_dataset,
+    ) 
+    ner_dataset = masakhaner_dataset.map(process_example, remove_columns=list(masakhaner_dataset['train'][0].keys()))
 
     # os.environ['WANDB_PROJECT'] = 'shiba'
 
