@@ -9,17 +9,22 @@ from transformers import HfArgumentParser, Trainer, EvalPrediction, BertForToken
 
 from shiba import CodepointTokenizer, ShibaForSequenceLabeling
 from helpers import get_model_hyperparams, SequenceLabelingDataCollator, \
-    ShibaWordSegArgs, get_base_shiba_state_dict
+    ShibaNERArgs, get_base_shiba_state_dict
 import torchmetrics
 
 #TODO: adapt this to NER! 
 # * [] vocab size
 # * [] process_examples needs fixing
+# * [] clearml integration: init task
+# * [] clearml integration: download dataset
+# * [] clearml integration: download pretrained model
+
+
 
 
 def main():
     transformers.logging.set_verbosity_info()
-    parser = HfArgumentParser((ShibaWordSegArgs,))
+    parser = HfArgumentParser((ShibaNERArgs,))
 
     training_args = parser.parse_args_into_dataclasses()[0]
     training_args.logging_dir = training_args.output_dir

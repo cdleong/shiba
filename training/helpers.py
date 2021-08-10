@@ -106,6 +106,23 @@ class ShibaWordSegArgs(ShibaTrainingArguments):
 
 
 @dataclass
+class ShibaNERArgs(ShibaTrainingArguments):
+    '''
+    Colin: copied from ShibaWordSegArgs
+    '''
+    do_predict: Optional[bool] = field(default=True)
+
+    # only used for hyperparameter search
+    trials: Optional[int] = field(default=2)
+    deepspeed: Optional[bool]  = field(default=None)
+    gradient_accumulation_steps: Optional[int] = field(default=1)
+    report_to: Optional[List[str]] = field(default=lambda: ['tensorboard'])
+    num_train_epochs: Optional[int] = 6
+    save_strategy: Optional[str] = 'no'
+
+    pretrained_bert: Optional[str] = field(default=None)
+
+@dataclass
 class ShibaClassificationArgs(ShibaTrainingArguments):
     do_predict: Optional[bool] = field(default=True)
     eval_steps: Optional[int] = field(default=300)
