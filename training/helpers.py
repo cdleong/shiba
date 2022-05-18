@@ -50,7 +50,7 @@ class ShibaTrainingArguments(TrainingArguments):
     learning_rate: Optional[float] = 0.001
 
     logging_steps: Optional[int] = field(default=200)
-    report_to: Optional[List[str]] = field(default_factory=lambda: ['wandb'])
+    report_to: Optional[List[str]] = field(default_factory=lambda: ['tensorboard'])
     evaluation_strategy: Optional[str] = field(default='steps')
     fp16: Optional[bool] = field(default=torch.cuda.is_available())
     deepspeed: Optional[bool] = field(default=None)

@@ -20,10 +20,22 @@ Files added:
 Running word segmentation on masakhaner using pretrained pytorch_model trained on hf_swahili_no_spaces
 
 ```
-python finetune_word_segmentation_on_masakhaner.py --output_dir ~/runs/wordseg \
+python finetune_word_segmentation_on_masakhaner.py --output_dir ./runs/wordseg \
   --resume_from_checkpoint ./hf_swahili_no_spaces_5k_steps/pytorch_model.bin \
-  --num_train_epochs 6 \
+  --num_train_epochs 3 \
   --save_strategy no
+```
+
+finetuning NER:
+```
+python finetune_ner.py --output_dir ./runs/masakhaner \
+  --resume_from_checkpoint ./hf_swahili_no_spaces_5k_steps/pytorch_model.bin \
+  --num_train_epochs 2 \
+  --logging_steps 50 \
+  --debug underflow_overflow \
+  --report_to tensorboard \
+  --save_strategy epoch
+
 ```
 
 

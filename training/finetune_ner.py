@@ -18,7 +18,7 @@ from clearml import Task, Dataset
 
 #TODO: adapt this to NER! 
 # * [x] vocab size/class count
-# * [] process_examples needs fixing
+# * [x] process_examples needs fixing
 # * [] clearml integration: init task
 # * [] clearml integration: download dataset from masakhaNER fork
 # * [] clearml integration: download pretrained model from clearML
@@ -35,25 +35,20 @@ def main():
     training_args = parser.parse_args_into_dataclasses()[0]
     training_args.logging_dir = training_args.output_dir
 
+
+    #cdleong: old code
+    # dep  = load_dataset('universal_dependencies', 'ja_gsd')
+    # dep = dep.map(process_example, remove_columns=list(ner_dataset['train'][0].keys()))
+
+    # cdleong: new code, using the masakhaNER loading script we've created. 
+    masakhaner_dataset = load_dataset("./masakhaner_fork_loading_script.py", 
+    training_args.maskhane_ner_dataset,
+    ) 
+    
+
     if training_args.pretrained_bert is None:
 
         tokenizer = CodepointTokenizer()
-
-        # def process_example(example: Dict) -> Dict:
-        #     tokens = example['tokens']  # cdleong: should be a list of characters
-        #     text = ''.join(tokens)  # cdleong: combines the list of characters to one big string. 
-        #     labels = [0]  # CLS token
-        #     for token in tokens:
-        #         new_label_count = len(token)
-        #         new_labels = [1] + [0] * (new_label_count - 1)
-        #         labels.extend(new_labels)
-
-        #     input_ids = tokenizer.encode(text)['input_ids']
-
-        #     return {
-        #         'input_ids': input_ids,
-        #         'labels': labels
-        #     }
 
         def process_example(example: Dict) -> Dict:
             '''Designed to process MasakhaNER examples from our fork at https://github.com/cdleong/masakhane-ner
@@ -101,13 +96,16 @@ def main():
         # Another example: 
         # Mike B-PER
         # Pompeo I-PER       
-        masakhane_ner_label_count=9 
-        label_count=masakhane_ner_label_count
-        model = ShibaForSequenceLabeling(label_count, **model_hyperparams)
+        masakhane_ner_label_count = masakhaner_dataset["train"].features["ner_tags"].feature.num_classes
+        
+        model = ShibaForSequenceLabeling(masakhane_ner_label_count, **model_hyperparams)
 
         if training_args.resume_from_checkpoint:
             print('Loading and using base shiba states from', training_args.resume_from_checkpoint)
-            checkpoint_state_dict = torch.load(training_args.resume_from_checkpoint)
+            checkpoint_state_dict = torch.load(
+                training_args.resume_from_checkpoint,
+                map_location=torch.device("cpu") # CDL: for running on my laptop which has CUDA issues
+                )
             model.shiba_model.load_state_dict(get_base_shiba_state_dict(checkpoint_state_dict))
 
         data_collator = SequenceLabelingDataCollator()
@@ -130,17 +128,9 @@ def main():
 
             return encoded_example
 
-    #cdleong: old code
-    # dep  = load_dataset('universal_dependencies', 'ja_gsd')
-    # dep = dep.map(process_example, remove_columns=list(ner_dataset['train'][0].keys()))
-
-    # cdleong: new code, using the masakhaNER loading script we've created. 
-    masakhaner_dataset = load_dataset("./masakhaner_fork_loading_script.py", 
-    training_args.maskhane_ner_dataset,
-    ) 
+    
     ner_dataset = masakhaner_dataset.map(process_example, remove_columns=list(masakhaner_dataset['train'][0].keys()))
 
-    # os.environ['WANDB_PROJECT'] = 'shiba'
 
     def compute_metrics(pred: EvalPrediction) -> Dict:
 
